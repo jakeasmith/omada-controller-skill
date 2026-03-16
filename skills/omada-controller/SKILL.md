@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.7"
+  version: "1.8"
 ---
 
 # Omada SDN Controller API
@@ -63,14 +63,14 @@ The API wrapper script is at `scripts/omada-api.sh` relative to this skill's dir
 
 **Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically.
 
-**Anti-patterns:** NEVER use curl to call the API. NEVER pipe the script output through other commands — use `--jq FILTER` instead. NEVER use prefix assignments or shell variables where the value can simply be placed in the command. Piping triggers extra permission prompts for the user. Common anti-patterns include:
+**Anti-patterns:** Any command beyond `bash <script> ...` triggers extra permission prompts. NEVER pipe, chain, or post-process script output with other commands. Use `--jq FILTER` for filtering and read the JSON output yourself for anything else. NEVER use curl, prefix assignments, or shell variables. Common anti-patterns:
 
-- curl -sk "${OMADA_URL}/api/info"
-- bash <script> GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "port"
-- bash <script> GET /v3/api-docs --raw | python3 -c "..."
-- SITE="123" && bash <script> GET "/sites/$SITE/devices?page=1&pageSize=100"
-- SITE="123"; bash <script> GET "/sites/$SITE/gateways/***/ports
-- SITE="123"; for mac in ...
+- `bash <script> ... | jq ...` — use `--jq FILTER` flag instead
+- `bash <script> ... | python3 -c "..."` — use `--jq` or read the output yourself
+- `cat saved-response.txt | python3 -c "..."` — read the JSON yourself, do not shell out
+- `curl -sk "${OMADA_URL}/api/info"` — use the script, not curl
+- `SITE="123" && bash <script> ...` — inline the value directly in the path
+- `SITE="123"; for mac in ...` — no shell variables or loops
 
 **On first use in a session**, run the health check with no arguments. This verifies connectivity and lets the user approve the script once for all subsequent calls:
 
@@ -103,6 +103,12 @@ bash <script> GET /v2/sites/{siteId}/setting/firewall/rules
 
 # Fetch the OpenAPI spec for endpoint discovery
 bash <script> GET /v3/api-docs --raw
+
+# Filter API paths by keyword (use --jq, NEVER pipe)
+bash <script> GET /v3/api-docs --raw --jq '[.paths | keys[] | select(test("port"; "i"))]'
+
+# Extract just the data array from a paginated response
+bash <script> GET "/sites/{siteId}/clients?page=1&pageSize=100" --jq '.result.data'
 ```
 
 ### Path Routing
