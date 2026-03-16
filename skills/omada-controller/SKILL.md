@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Omada SDN Controller API
@@ -57,7 +57,15 @@ If auth fails, common causes are:
 
 ## Making API Calls
 
-**Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically:
+**Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically.
+
+**On first use in a session**, run the health check with no arguments. This verifies connectivity and lets the user approve the script once for all subsequent calls:
+
+```bash
+bash scripts/omada-api.sh
+```
+
+Then make API calls:
 
 ```bash
 bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]

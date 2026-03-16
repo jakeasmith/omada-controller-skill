@@ -42,13 +42,9 @@ npx skills add -g jakeasmith/omada-controller-skill
    OMADA_SECRET=your-client-secret
    ```
 
-5. Add a permission rule so the API wrapper script runs without repeated prompts. In Claude Code, run:
+5. On first use, Claude will run a no-arg health check (`bash scripts/omada-api.sh`). When prompted, choose **"Yes, and don't ask again for bash scripts/omada-api.sh"** to allow all future calls.
 
-   ```
-   /permissions add Bash(bash scripts/omada-api.sh *)
-   ```
-
-   Or add it manually to `.claude/settings.json`:
+   Or add the permission manually to `.claude/settings.json`:
 
    ```json
    {

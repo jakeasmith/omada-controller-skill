@@ -3,9 +3,11 @@
 # Handles env loading, authentication, and API calls in one shot.
 #
 # Usage:
+#   bash scripts/omada-api.sh                    # Health check (no args)
 #   bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
 #
 # Examples:
+#   bash scripts/omada-api.sh
 #   bash scripts/omada-api.sh GET /sites
 #   bash scripts/omada-api.sh GET /sites/{siteId}/devices
 #   bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
@@ -18,20 +20,6 @@
 
 set -euo pipefail
 
-METHOD="${1:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
-API_PATH="${2:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
-BODY="${3:-}"
-RAW=false
-
-# Check for --raw flag in any position after method/path
-for arg in "$@"; do
-  if [[ "$arg" == "--raw" ]]; then
-    RAW=true
-    # Clear BODY if it was set to --raw
-    [[ "$BODY" == "--raw" ]] && BODY=""
-  fi
-done
-
 # --- Load environment ---
 
 if [[ -f .env ]]; then
@@ -42,6 +30,38 @@ for var in OMADA_URL OMADA_CLIENT OMADA_SECRET; do
   if [[ -z "${!var:-}" ]]; then
     echo "Error: ${var} is not set. Add it to .env" >&2
     exit 1
+  fi
+done
+
+# --- Health check (no args) ---
+
+if [[ $# -eq 0 ]]; then
+  RESPONSE=$(curl -sk "${OMADA_URL}/api/info")
+  ERROR_CODE=$(echo "$RESPONSE" | jq -r '.errorCode')
+  if [[ "$ERROR_CODE" != "0" ]]; then
+    echo "Error: Cannot reach controller at ${OMADA_URL}" >&2
+    exit 1
+  fi
+  OMADAC_ID=$(echo "$RESPONSE" | jq -r '.result.omadacId')
+  echo "Controller reachable at ${OMADA_URL}"
+  echo "Controller ID: ${OMADAC_ID}"
+  echo "Controller name: $(echo "$RESPONSE" | jq -r '.result.controllerName // "N/A"')"
+  exit 0
+fi
+
+# --- Parse arguments ---
+
+METHOD="${1:?Usage: omada-api.sh [<METHOD> <PATH> [JSON_BODY] [--raw]]}"
+API_PATH="${2:?Usage: omada-api.sh [<METHOD> <PATH> [JSON_BODY] [--raw]]}"
+BODY="${3:-}"
+RAW=false
+
+# Check for --raw flag in any position after method/path
+for arg in "$@"; do
+  if [[ "$arg" == "--raw" ]]; then
+    RAW=true
+    # Clear BODY if it was set to --raw
+    [[ "$BODY" == "--raw" ]] && BODY=""
   fi
 done
 
