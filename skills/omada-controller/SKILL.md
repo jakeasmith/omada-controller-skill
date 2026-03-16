@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Omada SDN Controller API
@@ -62,13 +62,13 @@ If auth fails, common causes are:
 **On first use in a session**, run the health check with no arguments. This verifies connectivity and lets the user approve the script once for all subsequent calls:
 
 ```bash
-bash scripts/omada-api.sh
+bash skills/omada-controller/scripts/omada-api.sh
 ```
 
 Then make API calls:
 
 ```bash
-bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]
+bash skills/omada-controller/scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]
 ```
 
 The path is relative to `/openapi/v1/{omadacId}` — no need to construct full URLs or manage tokens.
@@ -77,19 +77,19 @@ The path is relative to `/openapi/v1/{omadacId}` — no need to construct full U
 
 ```bash
 # List sites
-bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
+bash skills/omada-controller/scripts/omada-api.sh GET /sites?page=1&pageSize=100
 
 # List devices at a site
-bash scripts/omada-api.sh GET /sites/{siteId}/devices?page=1&pageSize=100
+bash skills/omada-controller/scripts/omada-api.sh GET /sites/{siteId}/devices?page=1&pageSize=100
 
 # Reboot a device
-bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+bash skills/omada-controller/scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
 
 # v2 endpoints — prefix path with /v2
-bash scripts/omada-api.sh GET /v2/sites/{siteId}/setting/firewall/rules
+bash skills/omada-controller/scripts/omada-api.sh GET /v2/sites/{siteId}/setting/firewall/rules
 
 # Fetch the OpenAPI spec for endpoint discovery
-bash scripts/omada-api.sh GET /v3/api-docs --raw
+bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw
 ```
 
 ### Path Routing
@@ -104,7 +104,7 @@ The script routes paths automatically:
 Users should add this to their Claude Code settings to allow the script without repeated prompts:
 
 ```
-Bash(bash scripts/omada-api.sh *)
+Bash(bash skills/omada-controller/scripts/omada-api.sh *)
 ```
 
 ## API Discovery
@@ -114,7 +114,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 - **Swagger UI** (browser): `{OMADA_URL}/swagger-ui/index.html` — no auth required
 - **OpenAPI spec** (JSON):
   ```bash
-  bash scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
+  bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
   ```
 
 ## Common Patterns
@@ -124,7 +124,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 Most endpoints are site-scoped. Get the site ID first:
 
 ```bash
-bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
+bash skills/omada-controller/scripts/omada-api.sh GET /sites?page=1&pageSize=100
 ```
 
 Then use it in subsequent paths: `/sites/{siteId}/devices`, `/sites/{siteId}/clients`, etc.

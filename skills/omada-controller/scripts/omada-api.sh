@@ -3,15 +3,15 @@
 # Handles env loading, authentication, and API calls in one shot.
 #
 # Usage:
-#   bash scripts/omada-api.sh                    # Health check (no args)
-#   bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
+#   bash skills/omada-controller/scripts/omada-api.sh                    # Health check (no args)
+#   bash skills/omada-controller/scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
 #
 # Examples:
-#   bash scripts/omada-api.sh
-#   bash scripts/omada-api.sh GET /sites
-#   bash scripts/omada-api.sh GET /sites/{siteId}/devices
-#   bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
-#   bash scripts/omada-api.sh GET /v3/api-docs --raw
+#   bash skills/omada-controller/scripts/omada-api.sh
+#   bash skills/omada-controller/scripts/omada-api.sh GET /sites
+#   bash skills/omada-controller/scripts/omada-api.sh GET /sites/{siteId}/devices
+#   bash skills/omada-controller/scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+#   bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw
 #
 # The path is relative to /openapi/v1/{omadacId} unless it starts with /v2 or /v3.
 # Add --raw as the last argument to skip jq formatting.
@@ -51,8 +51,8 @@ fi
 
 # --- Parse arguments ---
 
-METHOD="${1:?Usage: omada-api.sh [<METHOD> <PATH> [JSON_BODY] [--raw]]}"
-API_PATH="${2:?Usage: omada-api.sh [<METHOD> <PATH> [JSON_BODY] [--raw]]}"
+METHOD="${1:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
+API_PATH="${2:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
 BODY="${3:-}"
 RAW=false
 
