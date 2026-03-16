@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.6"
+  version: "1.7"
 ---
 
 # Omada SDN Controller API
@@ -63,13 +63,14 @@ The API wrapper script is at `scripts/omada-api.sh` relative to this skill's dir
 
 **Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically.
 
-**Anti-patterns:** NEVER use curl to call the API. NEVER use prefix assignments or shell variables where the value can simply be placed in the command. Never pipe bash commands into other bash commands when you can simply parse the results yourself. Common anti-patterns include:
+**Anti-patterns:** NEVER use curl to call the API. NEVER pipe the script output through other commands — use `--jq FILTER` instead. NEVER use prefix assignments or shell variables where the value can simply be placed in the command. Piping triggers extra permission prompts for the user. Common anti-patterns include:
 
 - curl -sk "${OMADA_URL}/api/info"
+- bash <script> GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "port"
+- bash <script> GET /v3/api-docs --raw | python3 -c "..."
 - SITE="123" && bash <script> GET "/sites/$SITE/devices?page=1&pageSize=100"
 - SITE="123"; bash <script> GET "/sites/$SITE/gateways/***/ports
 - SITE="123"; for mac in ...
-- bash <script> GET /v3/api-docs --raw | jq '.paths["/openapi/v1/{omadacId}/sites/{siteId}/switches/{switchMac}/multi-ports/status"]' 2>/dev/null
 
 **On first use in a session**, run the health check with no arguments. This verifies connectivity and lets the user approve the script once for all subsequent calls:
 
@@ -126,7 +127,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 - **Swagger UI** (browser): `{OMADA_URL}/swagger-ui/index.html` — no auth required
 - **OpenAPI spec** (JSON):
   ```bash
-  bash <script> GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
+  bash <script> GET /v3/api-docs --raw --jq '.paths | keys[]'
   ```
 
 ## Common Patterns
