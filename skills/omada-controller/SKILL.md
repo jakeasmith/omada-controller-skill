@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Omada SDN Controller API
@@ -57,18 +57,26 @@ If auth fails, common causes are:
 
 ## Making API Calls
 
-**Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically.
+**Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically. 
+
+**Anti-patterns:** NEVER use curl to call the API. NEVER use prefix assignments or shell variables where the value can simply be placed in the command. Never pipe bash commands into other bash commands when you can simply parse the results yourself. Common anti-patterns include:
+
+- curl -sk "${OMADA_URL}/api/info"
+- SITE="123" && bash scripts/omada-api.sh GET "/sites/$SITE/devices?page=1&pageSize=100"
+- SITE="123"; bash scripts/omada-api.sh GET "/sites/$SITE/gateways/***/ports
+- SITE="123"; for mac in ...
+- bash scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths["/openapi/v1/{omadacId}/sites/{siteId}/switches/{switchMac}/multi-ports/status"]' 2>/dev/null
 
 **On first use in a session**, run the health check with no arguments. This verifies connectivity and lets the user approve the script once for all subsequent calls:
 
 ```bash
-bash skills/omada-controller/scripts/omada-api.sh
+bash scripts/omada-api.sh
 ```
 
 Then make API calls:
 
 ```bash
-bash skills/omada-controller/scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]
+bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]
 ```
 
 The path is relative to `/openapi/v1/{omadacId}` — no need to construct full URLs or manage tokens.
@@ -77,19 +85,19 @@ The path is relative to `/openapi/v1/{omadacId}` — no need to construct full U
 
 ```bash
 # List sites
-bash skills/omada-controller/scripts/omada-api.sh GET /sites?page=1&pageSize=100
+bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
 
 # List devices at a site
-bash skills/omada-controller/scripts/omada-api.sh GET /sites/{siteId}/devices?page=1&pageSize=100
+bash scripts/omada-api.sh GET /sites/{siteId}/devices?page=1&pageSize=100
 
 # Reboot a device
-bash skills/omada-controller/scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
 
 # v2 endpoints — prefix path with /v2
-bash skills/omada-controller/scripts/omada-api.sh GET /v2/sites/{siteId}/setting/firewall/rules
+bash scripts/omada-api.sh GET /v2/sites/{siteId}/setting/firewall/rules
 
 # Fetch the OpenAPI spec for endpoint discovery
-bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw
+bash scripts/omada-api.sh GET /v3/api-docs --raw
 ```
 
 ### Path Routing
@@ -104,7 +112,7 @@ The script routes paths automatically:
 Users should add this to their Claude Code settings to allow the script without repeated prompts:
 
 ```
-Bash(bash skills/omada-controller/scripts/omada-api.sh *)
+Bash(bash scripts/omada-api.sh *)
 ```
 
 ## API Discovery
@@ -114,7 +122,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 - **Swagger UI** (browser): `{OMADA_URL}/swagger-ui/index.html` — no auth required
 - **OpenAPI spec** (JSON):
   ```bash
-  bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
+  bash scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
   ```
 
 ## Common Patterns
@@ -124,7 +132,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 Most endpoints are site-scoped. Get the site ID first:
 
 ```bash
-bash skills/omada-controller/scripts/omada-api.sh GET /sites?page=1&pageSize=100
+bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
 ```
 
 Then use it in subsequent paths: `/sites/{siteId}/devices`, `/sites/{siteId}/clients`, etc.

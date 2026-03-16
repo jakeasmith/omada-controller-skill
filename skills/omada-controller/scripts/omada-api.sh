@@ -3,27 +3,30 @@
 # Handles env loading, authentication, and API calls in one shot.
 #
 # Usage:
-#   bash skills/omada-controller/scripts/omada-api.sh                    # Health check (no args)
-#   bash skills/omada-controller/scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
+#   bash scripts/omada-api.sh                    # Health check (no args)
+#   bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
 #
 # Examples:
-#   bash skills/omada-controller/scripts/omada-api.sh
-#   bash skills/omada-controller/scripts/omada-api.sh GET /sites
-#   bash skills/omada-controller/scripts/omada-api.sh GET /sites/{siteId}/devices
-#   bash skills/omada-controller/scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
-#   bash skills/omada-controller/scripts/omada-api.sh GET /v3/api-docs --raw
+#   bash scripts/omada-api.sh
+#   bash scripts/omada-api.sh GET /sites
+#   bash scripts/omada-api.sh GET /sites/{siteId}/devices
+#   bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+#   bash scripts/omada-api.sh GET /v3/api-docs --raw
 #
 # The path is relative to /openapi/v1/{omadacId} unless it starts with /v2 or /v3.
-# Add --raw as the last argument to skip jq formatting.
+# Add --raw to skip jq formatting, or --jq FILTER to apply a custom jq filter.
 #
 # Requires: OMADA_URL, OMADA_CLIENT, OMADA_SECRET in .env
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
 # --- Load environment ---
 
-if [[ -f .env ]]; then
-  export $(grep -v '^#' .env | grep -v '^\s*$' | xargs)
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+  export $(grep -v '^#' "$PROJECT_ROOT/.env" | grep -v '^\s*$' | xargs)
 fi
 
 for var in OMADA_URL OMADA_CLIENT OMADA_SECRET; do
@@ -53,16 +56,18 @@ fi
 
 METHOD="${1:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
 API_PATH="${2:?Usage: omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]}"
-BODY="${3:-}"
+BODY=""
 RAW=false
+JQ_FILTER="."
 
-# Check for --raw flag in any position after method/path
-for arg in "$@"; do
-  if [[ "$arg" == "--raw" ]]; then
-    RAW=true
-    # Clear BODY if it was set to --raw
-    [[ "$BODY" == "--raw" ]] && BODY=""
-  fi
+# Parse optional flags and body from remaining args
+shift 2
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --raw) RAW=true; shift ;;
+    --jq)  JQ_FILTER="${2:?--jq requires a filter argument}"; shift 2 ;;
+    *)     [[ -z "$BODY" ]] && BODY="$1"; shift ;;
+  esac
 done
 
 # --- Authenticate ---
@@ -112,5 +117,5 @@ RESPONSE=$(curl "${CURL_ARGS[@]}" "$FULL_URL")
 if [[ "$RAW" == true ]]; then
   echo "$RESPONSE"
 else
-  echo "$RESPONSE" | jq .
+  echo "$RESPONSE" | jq "$JQ_FILTER"
 fi
