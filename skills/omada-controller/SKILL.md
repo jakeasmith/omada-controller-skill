@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Omada SDN Controller API
@@ -55,93 +55,71 @@ If auth fails, common causes are:
 - The controller URL is wrong or missing the port
 - The client secret was rotated in the UI but not updated in `.env`
 
-## Authentication Flow
+## Making API Calls
 
-The Open API uses OAuth2 client credentials but the flow is **not in the swagger spec**. Follow these three steps exactly.
-
-### Step 1: Get the Controller ID
+**Always use the wrapper script** for all Omada API calls. It handles env loading, authentication, and URL construction automatically:
 
 ```bash
-OMADAC_ID=$(curl -sk "${OMADA_URL}/api/info" | jq -r '.result.omadacId')
+bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw]
 ```
 
-This endpoint is outside the OpenAPI spec. The `omadacId` is a path parameter in every subsequent call.
+The path is relative to `/openapi/v1/{omadacId}` — no need to construct full URLs or manage tokens.
 
-### Step 2: Obtain an Access Token
+### Examples
 
 ```bash
-TOKEN_RESPONSE=$(curl -sk -X POST \
-  "${OMADA_URL}/openapi/authorize/token?grant_type=client_credentials" \
-  -H "Content-Type: application/json" \
-  -d "{\"omadacId\":\"${OMADAC_ID}\",\"client_id\":\"${OMADA_CLIENT}\",\"client_secret\":\"${OMADA_SECRET}\"}")
-ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.result.accessToken')
+# List sites
+bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
+
+# List devices at a site
+bash scripts/omada-api.sh GET /sites/{siteId}/devices?page=1&pageSize=100
+
+# Reboot a device
+bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+
+# v2 endpoints — prefix path with /v2
+bash scripts/omada-api.sh GET /v2/sites/{siteId}/setting/firewall/rules
+
+# Fetch the OpenAPI spec for endpoint discovery
+bash scripts/omada-api.sh GET /v3/api-docs --raw
 ```
 
-Note the non-standard format:
-- `grant_type` is a **query parameter**, not in the body
-- `omadacId`, `client_id`, `client_secret` go in the **JSON body**
+### Path Routing
 
-Tokens expire after **2 hours** (7200 seconds).
+The script routes paths automatically:
+- `/sites/...` → `/openapi/v1/{omadacId}/sites/...`
+- `/v2/sites/...` → `/openapi/v2/{omadacId}/sites/...`
+- `/v3/api-docs` → `{OMADA_URL}/v3/api-docs` (no auth prefix)
 
-### Step 3: Authenticate Requests
+### Recommended Permission
 
-All API requests use this header — it is NOT standard Bearer format:
+Users should add this to their Claude Code settings to allow the script without repeated prompts:
 
 ```
-Authorization: AccessToken=<token>
+Bash(bash scripts/omada-api.sh *)
 ```
-
-Example:
-
-```bash
-curl -sk -H "Authorization: AccessToken=${ACCESS_TOKEN}" \
-  "${OMADA_URL}/openapi/v1/${OMADAC_ID}/sites?page=1&pageSize=100"
-```
-
-## Quick-Start: Full Auth Sequence
-
-```bash
-export $(grep -v '^#' .env | xargs)
-OMADAC_ID=$(curl -sk "${OMADA_URL}/api/info" | jq -r '.result.omadacId')
-ACCESS_TOKEN=$(curl -sk -X POST \
-  "${OMADA_URL}/openapi/authorize/token?grant_type=client_credentials" \
-  -H "Content-Type: application/json" \
-  -d "{\"omadacId\":\"${OMADAC_ID}\",\"client_id\":\"${OMADA_CLIENT}\",\"client_secret\":\"${OMADA_SECRET}\"}" \
-  | jq -r '.result.accessToken')
-```
-
-Then use `$OMADAC_ID` and `$ACCESS_TOKEN` for all subsequent calls.
 
 ## API Discovery
 
 The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it to discover any endpoint at runtime rather than hard-coding paths.
 
 - **Swagger UI** (browser): `{OMADA_URL}/swagger-ui/index.html` — no auth required
-- **OpenAPI spec** (JSON): `GET {OMADA_URL}/v3/api-docs` — no auth required, ~3.4MB
-
-When you need to find an endpoint, fetch the spec and search it:
-
-```bash
-curl -sk "${OMADA_URL}/v3/api-docs" | jq '.paths | keys[]' | grep -i "<keyword>"
-```
+- **OpenAPI spec** (JSON):
+  ```bash
+  bash scripts/omada-api.sh GET /v3/api-docs --raw | jq '.paths | keys[]' | grep -i "<keyword>"
+  ```
 
 ## Common Patterns
 
-### Path Structure
+### Site ID
 
-All site-scoped endpoints follow:
-
-```
-/openapi/v1/{omadacId}/sites/{siteId}/...
-```
-
-Get the site ID first:
+Most endpoints are site-scoped. Get the site ID first:
 
 ```bash
-curl -sk -H "Authorization: AccessToken=${ACCESS_TOKEN}" \
-  "${OMADA_URL}/openapi/v1/${OMADAC_ID}/sites?page=1&pageSize=100" \
-  | jq '.result.data[] | {name, siteId: .id}'
+bash scripts/omada-api.sh GET /sites?page=1&pageSize=100
 ```
+
+Then use it in subsequent paths: `/sites/{siteId}/devices`, `/sites/{siteId}/clients`, etc.
 
 ### Pagination
 
@@ -161,7 +139,16 @@ Paginated endpoints accept `page` and `pageSize` query parameters and return:
 
 ### API Versions
 
-Some endpoints use `/openapi/v2/` instead of `/openapi/v1/`. The swagger spec includes both.
+Some endpoints use `/v2/` instead of the default `/v1/`. The swagger spec includes both — prefix the path with `/v2` when needed.
+
+## Authentication Details
+
+The wrapper script handles auth automatically, but for reference:
+
+1. **Controller ID**: Fetched from `GET {OMADA_URL}/api/info` (outside the OpenAPI spec)
+2. **Token**: OAuth2 client credentials via `POST {OMADA_URL}/openapi/authorize/token?grant_type=client_credentials` with `omadacId`, `client_id`, `client_secret` in the JSON body (`grant_type` is a query param, not body)
+3. **Header format**: `Authorization: AccessToken=<token>` (NOT `Bearer`)
+4. **Expiry**: Tokens last 2 hours (7200 seconds) — the script re-authenticates each call
 
 ## Gotchas
 
@@ -172,6 +159,6 @@ Some endpoints use `/openapi/v2/` instead of `/openapi/v1/`. The swagger spec in
 
 ## References
 
-- [scripts/omada-auth.sh](scripts/omada-auth.sh) — Reusable auth helper script
+- [scripts/omada-api.sh](scripts/omada-api.sh) — API wrapper (handles env, auth, and requests)
 - [references/api-categories.md](references/api-categories.md) — API endpoint categories and counts
 - [references/external-resources.md](references/external-resources.md) — Links to docs, examples, and integrations

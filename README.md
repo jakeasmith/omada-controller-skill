@@ -42,14 +42,31 @@ npx skills add -g jakeasmith/omada-controller-skill
    OMADA_SECRET=your-client-secret
    ```
 
-5. Ask Claude Code to interact with your controller — the skill handles auth and endpoint discovery automatically.
+5. Add a permission rule so the API wrapper script runs without repeated prompts. In Claude Code, run:
+
+   ```
+   /permissions add Bash(bash scripts/omada-api.sh *)
+   ```
+
+   Or add it manually to `.claude/settings.json`:
+
+   ```json
+   {
+     "permissions": {
+       "allow": ["Bash(bash scripts/omada-api.sh *)"]
+     }
+   }
+   ```
+
+6. Ask Claude Code to interact with your controller — the skill handles auth and endpoint discovery automatically.
 
 ## Skill Contents
 
 ```
 skills/omada-controller/
 ├── SKILL.md                          # Main skill instructions
-├── scripts/omada-auth.sh             # Reusable auth helper
+├── scripts/
+│   └── omada-api.sh                  # API wrapper (auth + request in one call)
 └── references/
     ├── api-categories.md             # Endpoint categories and counts
     └── external-resources.md         # Links to docs and community resources
