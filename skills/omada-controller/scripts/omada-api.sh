@@ -121,8 +121,10 @@ fi
 
 RESPONSE=$(curl "${CURL_ARGS[@]}" "$FULL_URL")
 
-if [[ "$RAW" == true ]]; then
+if [[ "$JQ_FILTER" != "." ]]; then
+  echo "$RESPONSE" | jq "$JQ_FILTER"
+elif [[ "$RAW" == true ]]; then
   echo "$RESPONSE"
 else
-  echo "$RESPONSE" | jq "$JQ_FILTER"
+  echo "$RESPONSE" | jq .
 fi
