@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Omada SDN Controller API
@@ -89,10 +89,10 @@ The path is relative to `/openapi/v1/{omadacId}` — no need to construct full U
 
 ```bash
 # List sites
-bash <script> GET /sites?page=1&pageSize=100
+bash <script> GET "/sites?page=1&pageSize=100"
 
 # List devices at a site
-bash <script> GET /sites/{siteId}/devices?page=1&pageSize=100
+bash <script> GET "/sites/{siteId}/devices?page=1&pageSize=100"
 
 # Reboot a device
 bash <script> POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
@@ -136,7 +136,7 @@ The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it 
 Most endpoints are site-scoped. Get the site ID first:
 
 ```bash
-bash <script> GET /sites?page=1&pageSize=100
+bash <script> GET "/sites?page=1&pageSize=100"
 ```
 
 Then use it in subsequent paths: `/sites/{siteId}/devices`, `/sites/{siteId}/clients`, etc.
@@ -172,6 +172,7 @@ The wrapper script handles auth automatically, but for reference:
 
 ## Gotchas
 
+- **Quoting**: Always quote paths containing `&` (e.g., `"/sites?page=1&pageSize=100"`). Unquoted `&` is a shell background operator.
 - **TLS**: The controller typically uses a self-signed cert. Always use `curl -k`.
 - **MAC format**: The API uses `AA-BB-CC-DD-EE-FF` (uppercase, dashes).
 - **Error handling**: Always check `errorCode` in responses. `0` = success, negative = error.
