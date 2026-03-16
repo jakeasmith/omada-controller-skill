@@ -3,15 +3,16 @@
 # Handles env loading, authentication, and API calls in one shot.
 #
 # Usage:
-#   bash scripts/omada-api.sh                    # Health check (no args)
-#   bash scripts/omada-api.sh <METHOD> <PATH> [JSON_BODY]
+#   bash omada-api.sh                    # Health check (no args)
+#   bash omada-api.sh <METHOD> <PATH> [JSON_BODY] [--raw] [--jq FILTER]
 #
 # Examples:
-#   bash scripts/omada-api.sh
-#   bash scripts/omada-api.sh GET /sites
-#   bash scripts/omada-api.sh GET /sites/{siteId}/devices
-#   bash scripts/omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
-#   bash scripts/omada-api.sh GET /v3/api-docs --raw
+#   bash omada-api.sh
+#   bash omada-api.sh GET /sites
+#   bash omada-api.sh GET /sites/{siteId}/devices
+#   bash omada-api.sh POST /sites/{siteId}/cmd/devices/reboot '{"deviceMacs":["AA-BB-CC-DD-EE-FF"]}'
+#   bash omada-api.sh GET /v3/api-docs --raw
+#   bash omada-api.sh GET /sites --jq '.result.data'
 #
 # The path is relative to /openapi/v1/{omadacId} unless it starts with /v2 or /v3.
 # Add --raw to skip jq formatting, or --jq FILTER to apply a custom jq filter.
@@ -21,7 +22,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Find project root by walking up from SCRIPT_DIR until we hit .git or /
+PROJECT_ROOT="$SCRIPT_DIR"
+while [[ "$PROJECT_ROOT" != "/" ]]; do
+  [[ -d "$PROJECT_ROOT/.git" ]] && break
+  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
 
 # --- Load environment ---
 
