@@ -29,6 +29,19 @@ Or install globally (available across all projects):
 npx skills add -g jakeasmith/omada-controller-skill
 ```
 
+> **Claude Code not detecting the skill?** Claude Code discovers skills from `~/.claude/skills/` (global) and `<project>/.claude/skills/` (per-project), plus installed plugins. If your installer places the skill elsewhere (for example under `.agents/skills/`), link it into a scanned location so Claude Code picks it up:
+>
+> ```bash
+> # project-scoped
+> mkdir -p .claude/skills
+> ln -s ../../.agents/skills/omada-controller .claude/skills/omada-controller
+>
+> # or global, across all projects
+> ln -s "$(pwd)/.agents/skills/omada-controller" ~/.claude/skills/omada-controller
+> ```
+>
+> Restart Claude Code (or start a new session) so it rescans the skills directories.
+
 ## Setup
 
 1. Log into the Omada Controller web UI

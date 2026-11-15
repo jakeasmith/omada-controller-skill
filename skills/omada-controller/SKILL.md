@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires curl and network access to an Omada SDN Controller. The controller must have Open API enabled with client credentials configured.
 metadata:
   author: jakeasmith
-  version: "1.9"
+  version: "1.10"
 ---
 
 # Omada SDN Controller API
@@ -54,6 +54,7 @@ If auth fails, common causes are:
 - The client app type is set to Gateway instead of Client
 - The controller URL is wrong or missing the port
 - The client secret was rotated in the UI but not updated in `.env`
+- **`OMADA_URL` points at the web-UI port, not the Open API port.** On some deployments the Open API is served on a different port/address than the management web UI (for example `https://host:443` vs `https://host:8043`). The tell-tale symptom: `GET {OMADA_URL}/api/info` returns valid JSON, but `POST .../openapi/authorize/token` returns an **HTTP 500 Tomcat HTML page** (not a JSON `errorCode`) regardless of whether the credentials are correct. Fix: set `OMADA_URL` to the **Interface Access Address** shown in the credential's **View** dialog (Settings → Platform Integration → Open API → View on your app), which is the authoritative Open API base URL.
 
 ## Locating the Wrapper Script
 
@@ -128,13 +129,15 @@ Bash(bash *omada-api.sh *)
 
 ## API Discovery
 
-The controller hosts its own full OpenAPI 3.0.1 spec (~1,507 endpoints). Use it to discover any endpoint at runtime rather than hard-coding paths.
+The controller hosts its own full OpenAPI 3.0.1 spec. Use it to discover any endpoint at runtime rather than hard-coding paths.
 
 - **Swagger UI** (browser): `{OMADA_URL}/swagger-ui/index.html` — no auth required
 - **OpenAPI spec** (JSON):
   ```bash
   bash <script> GET /v3/api-docs --raw --jq '.paths | keys[]'
   ```
+
+> **Note:** `/v3/api-docs` and `/swagger-ui/` are not served by every build — on some newer controllers (observed on v6.3.x) they return **404**. When they do, use TP-Link's official Open API documentation, which publishes a model- and version-scoped endpoint index and OpenAPI bundle: **https://omada-northbound-docs.tplinkcloud.com/** (select your controller model and version). It also exposes an AI-friendly plain-text endpoint index at `/models/<model>/<version>/network/llms.txt`.
 
 ## Common Patterns
 
