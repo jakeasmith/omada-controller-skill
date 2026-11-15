@@ -23,10 +23,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Find project root by walking up from SCRIPT_DIR until we hit .git or /
+# Find project root by walking up from SCRIPT_DIR until we find a .env or .git
+# marker. Checking for .env too means this works in projects that are not git
+# repositories. If neither marker is found, any OMADA_* variables already present
+# in the environment are used instead.
 PROJECT_ROOT="$SCRIPT_DIR"
 while [[ "$PROJECT_ROOT" != "/" ]]; do
-  [[ -d "$PROJECT_ROOT/.git" ]] && break
+  [[ -f "$PROJECT_ROOT/.env" || -d "$PROJECT_ROOT/.git" ]] && break
   PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
 done
 
